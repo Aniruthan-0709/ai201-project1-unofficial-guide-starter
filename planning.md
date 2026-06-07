@@ -1,122 +1,191 @@
-# Project 1 Planning: The Unofficial Guide
-
-> Write this document before you write any pipeline code.
-> Your spec and architecture diagram are what you'll use to direct AI tools (Claude, Copilot, etc.) to generate your implementation — the more specific they are, the more useful the generated code will be.
-> Update the Retrieval Approach and Chunking Strategy sections if you change your approach during implementation.
-> Update this file before starting any stretch features.
-
----
-
 ## Domain
 
-<!-- What domain did you choose? Why is this knowledge valuable and hard to find through official channels? -->
+Asthma — a chronic respiratory condition affecting over 260 million people worldwide.
+
+This domain is valuable because patients and caregivers often struggle to find
+consolidated, reliable information. Official medical channels (hospital websites,
+drug inserts) are fragmented and written for clinicians. Wikipedia's asthma-related
+articles cover everything from pathophysiology to treatment to epidemiology in
+plain language, making them ideal for a Q&A system that can synthesize across
+subtopics in one place.
 
 ---
 
 ## Documents
 
-<!-- List your specific sources: URLs, subreddit names, forum threads, or file descriptions.
-     Aim for at least 10 sources that together cover different subtopics or perspectives within your domain. -->
-
-| # | Source | Description | URL or location |
-|---|--------|-------------|-----------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
-| 9 | | | |
-| 10 | | | |
+| #  | Source    | Description                                      | URL or location                                                        |
+|----|-----------|--------------------------------------------------|------------------------------------------------------------------------|
+| 1  | Wikipedia | Asthma (main overview)                           | https://en.wikipedia.org/wiki/Asthma                                   |
+| 2  | Wikipedia | Asthma attack (acute episodes)                   | https://en.wikipedia.org/wiki/Asthma_attack                            |
+| 3  | Wikipedia | Exercise-induced bronchoconstriction             | https://en.wikipedia.org/wiki/Exercise-induced_bronchoconstriction     |
+| 4  | Wikipedia | Allergic asthma                                  | https://en.wikipedia.org/wiki/Allergic_asthma                          |
+| 5  | Wikipedia | Occupational asthma                              | https://en.wikipedia.org/wiki/Occupational_asthma                      |
+| 6  | Wikipedia | Childhood asthma                                 | https://en.wikipedia.org/wiki/Asthma_in_children                       |
+| 7  | Wikipedia | Status asthmaticus (severe attacks)              | https://en.wikipedia.org/wiki/Status_asthmaticus                       |
+| 8  | Wikipedia | Short-acting beta-2 agonist (rescue inhalers)    | https://en.wikipedia.org/wiki/Short-acting_beta-2_agonist              |
+| 9  | Wikipedia | Inhaled corticosteroid (controller medication)   | https://en.wikipedia.org/wiki/Inhaled_corticosteroid                   |
+| 10 | Wikipedia | Peak flow meter (monitoring tool)                | https://en.wikipedia.org/wiki/Peak_flow_meter                          |
 
 ---
 
 ## Chunking Strategy
 
-<!-- How will you split documents into chunks?
-     State your chunk size (in tokens or characters), overlap size, and explain why those
-     numbers fit the structure of your documents.
-     A review-heavy corpus warrants different chunking than a long FAQ. -->
+**Chunking method:** Semantic chunking (using sentence embeddings to detect
+topic shifts between sentences)
 
-**Chunk size:**
+**Approximate chunk size:** 3–5 sentences per chunk (driven by semantic
+similarity threshold, not fixed character count)
 
-**Overlap:**
+**Overlap:** Not applicable — semantic chunking groups by meaning, so
+boundary sentences naturally carry context from the previous topic.
 
 **Reasoning:**
+Wikipedia articles are structured into multi-sentence paragraphs under
+named sections (Causes, Symptoms, Treatment, etc.). Medical facts in
+these articles typically span 2–4 sentences — for example, a description
+of airway inflammation will state the cause, the physiological effect,
+and the consequence in consecutive sentences.
+
+Rather than splitting by fixed character count (which can cut mid-idea)
+or purely by paragraph (which can over-split tightly related paragraphs),
+semantic chunking groups sentences by meaning. This keeps complete medical
+ideas — cause, mechanism, consequence — together in one chunk, which
+directly improves retrieval quality for specific clinical questions.
+
+Too-small chunks (e.g., 100 characters) would split sentences and return
+fragments without enough context to be useful. Too-large chunks (e.g.,
+1500+ characters) would mix multiple topics, reducing retrieval precision.
 
 ---
 
 ## Retrieval Approach
 
-<!-- Which embedding model are you using (e.g., all-MiniLM-L6-v2 via sentence-transformers)?
-     How many chunks will you retrieve per query (top-k)?
-     If you were deploying this for real users and cost wasn't a constraint, what tradeoffs
-     would you weigh in choosing a different embedding model — context length, multilingual
-     support, accuracy on domain-specific text, latency? -->
+**Embedding model:** pritamdeka/S-PubMedBert-MS-MARCO
+(via sentence-transformers — runs locally, no API cost)
 
-**Embedding model:**
+**Top-k:** 5
 
-**Top-k:**
+**Reasoning:**
+Since the corpus is medical in nature, a general-purpose embedding model
+like all-MiniLM-L6-v2 may fail to recognize that medical synonyms
+("rescue inhaler" vs. "short-acting beta-2 agonist") refer to the same
+concept. S-PubMedBert is pre-trained on PubMed abstracts and MS-MARCO
+passages, making it significantly better at capturing semantic similarity
+within clinical and biomedical text.
+
+Top-k of 5 gives the LLM enough context to synthesize a complete answer
+across subtopics (e.g., a question about asthma triggers might pull from
+the allergic asthma, occupational asthma, and main asthma articles
+simultaneously) without overwhelming it with off-topic chunks.
 
 **Production tradeoff reflection:**
+In a real deployment, I would evaluate OpenAI's text-embedding-3-large
+for higher accuracy, but it introduces per-query API cost and latency.
+For a local prototype over 10 documents, S-PubMedBert gives the best
+accuracy-to-cost ratio with no API dependency.
 
 ---
 
 ## Evaluation Plan
 
-<!-- List your 5 test questions with their expected correct answers.
-     Questions should be specific enough that you can judge whether the system's response
-     is right or wrong. "What are good dining halls?" is too vague.
-     "What do students say about wait times at [dining hall name] during lunch?" is testable. -->
-
-| # | Question | Expected answer |
-|---|----------|-----------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| # | Question                                                                          | Expected answer                                                                                                                              |
+|---|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | What physiological mechanism causes airway narrowing during an asthma attack?     | Bronchoconstriction from smooth muscle contraction, mucus production, and airway inflammation                                                |
+| 2 | How does exercise-induced bronchoconstriction differ from classical asthma?       | EIB is triggered by physical exertion and airway cooling/drying, not allergens; can occur in people without chronic asthma                   |
+| 3 | What is the difference between a rescue inhaler and a controller medication?      | Rescue inhalers (SABAs) give immediate relief; controllers (inhaled corticosteroids) reduce inflammation daily and prevent attacks            |
+| 4 | What occupational exposures are known to cause occupational asthma?               | Isocyanates, flour dust, latex, animal proteins, and wood dust                                                                               |
+| 5 | How is a peak flow meter used to monitor asthma severity?                         | Measures peak expiratory flow rate; compared to personal best to detect worsening before symptoms appear                                     |
 
 ---
 
 ## Anticipated Challenges
 
-<!-- What could go wrong? Name at least two specific risks with reasoning.
-     Consider: noisy or inconsistent documents, missing source attribution, off-topic
-     retrieval, chunks that split key information across boundaries. -->
+1. **Orphaned references in Wikipedia chunks:** Wikipedia articles frequently
+use cross-references ("as described above", "see section X") that lose meaning
+when the text is split into chunks. A retrieved chunk containing such references
+gives the LLM incomplete context, potentially causing hallucinated or vague
+answers. To mitigate this, semantic chunking should keep section-level context
+together, and the system prompt will instruct the LLM to only answer from what
+is explicitly stated in the retrieved chunks.
 
-1.
-
-2.
+2. **Medical synonym mismatch:** Asthma literature uses many equivalent terms
+interchangeably (e.g., "SABA", "rescue inhaler", "short-acting beta-2 agonist").
+Even with a domain-specific embedding model like S-PubMedBert, a query phrased
+with one term may not retrieve chunks using a different term for the same concept.
+This could cause low context relevance scores on evaluation even when the answer
+exists in the corpus.
 
 ---
 
 ## Architecture
 
-<!-- Draw a diagram of your pipeline showing the five stages:
-     Document Ingestion → Chunking → Embedding + Vector Store → Retrieval → Generation
-     Label each stage with the tool or library you're using.
-     You can use ASCII art, a Mermaid diagram, or embed a sketch as an image.
-     You'll use this diagram as context when prompting AI tools to implement each stage. -->
+```
+[User Query]
+     |
+     v
+[Gradio UI]
+     |
+     v
+[Retriever]
+  - Embed query with S-PubMedBert
+  - Search ChromaDB vector store
+  - Return top-5 chunks + source names
+     |
+     v
+[Generator]
+  - Build prompt: system instruction + retrieved chunks + user query
+  - Call Groq API (Llama 3)
+  - Return grounded answer with source attribution
+     |
+     v
+[RAGAS Evaluator] (runs separately on 5 test questions)
+  - Scores: Faithfulness, Context Relevance, Answer Relevance
+  - Backend: Groq API (free tier)
+```
 
 ---
 
 ## AI Tool Plan
 
-<!-- For each part of the pipeline below, describe:
-     - Which AI tool you plan to use (Claude, Copilot, ChatGPT, etc.)
-     - What you'll give it as input (which sections of this planning.md, which requirements)
-     - What you expect it to produce
-     - How you'll verify the output matches your spec
-
-     "I'll use AI to help me code" is not a plan.
-     "I'll give Claude my Chunking Strategy section and ask it to implement chunk_text()
-     with my specified chunk size and overlap" is a plan. -->
-
 **Milestone 3 — Ingestion and chunking:**
+
+I will give Claude this planning.md (specifically the Domain, Documents,
+and Chunking Strategy sections) along with the following request:
+"Implement a Python script that fetches these 10 Wikipedia URLs using
+the wikipedia-api library, cleans the raw text by removing citation
+markers and section headers, applies semantic chunking using
+sentence-transformers with a cosine similarity threshold of 0.75, and
+saves each article's chunks as a separate JSON file in /documents."
+
+I expect it to produce: a working scraper + cleaner + semantic chunker.
+I will verify by manually inspecting 2-3 output JSON files to confirm
+chunks are complete sentences, medically coherent, and not splitting
+mid-idea.
 
 **Milestone 4 — Embedding and retrieval:**
 
-**Milestone 5 — Generation and interface:**
+I will give Claude this planning.md (Retrieval Approach section) and ask:
+"Implement embed_and_store() using pritamdeka/S-PubMedBert-MS-MARCO via
+sentence-transformers and ChromaDB as the vector store. Then implement
+retrieve() that takes a query string and returns the top-5 most similar
+chunks with their source document name."
+
+I expect it to produce: a retriever.py with both functions complete.
+I will verify by running 2 of my evaluation questions manually and
+checking whether the returned chunks are from the correct source articles.
+
+**Milestone 5 — Generation, evaluation and interface:**
+
+I will give Claude this planning.md (Evaluation Plan section) and ask:
+"Implement generate_response() that sends the top-5 retrieved chunks as
+context to Groq's Llama 3 API with a system prompt that instructs the
+model to only answer from the provided context and cite which document
+each fact came from. Then implement an evaluation script using RAGAS
+with Groq as the backend that scores faithfulness, context relevance,
+and answer relevance for each of my 5 test questions."
+
+I expect it to produce: generator.py, a RAGAS evaluation script, and a
+Gradio UI shell. I will verify evaluation scores make sense (faithfulness
+should be high since source docs are factual Wikipedia articles) and
+manually review any question scoring below 0.7 to identify whether the
+failure is in retrieval or generation.
