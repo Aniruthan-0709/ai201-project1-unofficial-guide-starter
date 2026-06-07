@@ -13,18 +13,18 @@ subtopics in one place.
 
 ## Documents
 
-| #  | Source    | Description                                      | URL or location                                                        |
-|----|-----------|--------------------------------------------------|------------------------------------------------------------------------|
-| 1  | Wikipedia | Asthma (main overview)                           | https://en.wikipedia.org/wiki/Asthma                                   |
-| 2  | Wikipedia | Asthma attack (acute episodes)                   | https://en.wikipedia.org/wiki/Asthma_attack                            |
-| 3  | Wikipedia | Exercise-induced bronchoconstriction             | https://en.wikipedia.org/wiki/Exercise-induced_bronchoconstriction     |
-| 4  | Wikipedia | Allergic asthma                                  | https://en.wikipedia.org/wiki/Allergic_asthma                          |
-| 5  | Wikipedia | Occupational asthma                              | https://en.wikipedia.org/wiki/Occupational_asthma                      |
-| 6  | Wikipedia | Childhood asthma                                 | https://en.wikipedia.org/wiki/Asthma_in_children                       |
-| 7  | Wikipedia | Status asthmaticus (severe attacks)              | https://en.wikipedia.org/wiki/Status_asthmaticus                       |
-| 8  | Wikipedia | Short-acting beta-2 agonist (rescue inhalers)    | https://en.wikipedia.org/wiki/Short-acting_beta-2_agonist              |
-| 9  | Wikipedia | Inhaled corticosteroid (controller medication)   | https://en.wikipedia.org/wiki/Inhaled_corticosteroid                   |
-| 10 | Wikipedia | Peak flow meter (monitoring tool)                | https://en.wikipedia.org/wiki/Peak_flow_meter                          |
+| #  | Source    | Description                                      | URL or location                                                                    |
+|----|-----------|--------------------------------------------------|------------------------------------------------------------------------------------|
+| 1  | Wikipedia | Asthma (main overview)                           | https://en.wikipedia.org/wiki/Asthma                                               |
+| 2  | Wikipedia | Asthma attack (acute episodes)                   | https://en.wikipedia.org/wiki/Asthma_attack                                        |
+| 3  | Wikipedia | Exercise-induced bronchoconstriction             | https://en.wikipedia.org/wiki/Exercise-induced_bronchoconstriction                 |
+| 4  | Wikipedia | Allergic asthma                                  | https://en.wikipedia.org/wiki/Allergic_asthma                                      |
+| 5  | Wikipedia | Occupational asthma                              | https://en.wikipedia.org/wiki/Occupational_asthma                                  |
+| 6  | Wikipedia | Pathophysiology of asthma                        | https://en.wikipedia.org/wiki/Pathophysiology_of_asthma                            |
+| 7  | Wikipedia | Status asthmaticus (severe attacks)              | https://en.wikipedia.org/wiki/Status_asthmaticus                                   |
+| 8  | Wikipedia | Beta2-adrenergic agonist (rescue medication)     | https://en.wikipedia.org/wiki/Beta2-adrenergic_agonist                             |
+| 9  | Wikipedia | Inhaled corticosteroid (controller medication)   | https://en.wikipedia.org/wiki/Inhaled_corticosteroid                               |
+| 10 | Wikipedia | Peak flow meter (monitoring tool)                | https://en.wikipedia.org/wiki/Peak_flow_meter                                      |
 
 ---
 
