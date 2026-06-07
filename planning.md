@@ -1,3 +1,12 @@
+# Project 1 Planning: The Unofficial Guide
+
+> Write this document before you write any pipeline code.
+> Your spec and architecture diagram are what you'll use to direct AI tools (Claude, Copilot, etc.) to generate your implementation — the more specific they are, the more useful the generated code will be.
+> Update the Retrieval Approach and Chunking Strategy sections if you change your approach during implementation.
+> Update this file before starting any stretch features.
+
+---
+
 ## Domain
 
 Asthma — a chronic respiratory condition affecting over 260 million people worldwide.
@@ -30,31 +39,29 @@ subtopics in one place.
 
 ## Chunking Strategy
 
-**Chunking method:** Semantic chunking (using sentence embeddings to detect
-topic shifts between sentences)
+**Chunking method:** Paragraph-based chunking with character size limits
 
-**Approximate chunk size:** 3–5 sentences per chunk (driven by semantic
-similarity threshold, not fixed character count)
+**Chunk size:** 200–1000 characters per chunk (paragraphs grouped until
+hitting the 1000 character ceiling)
 
-**Overlap:** Not applicable — semantic chunking groups by meaning, so
-boundary sentences naturally carry context from the previous topic.
+**Overlap:** None — paragraph boundaries provide natural context separation
 
 **Reasoning:**
-Wikipedia articles are structured into multi-sentence paragraphs under
-named sections (Causes, Symptoms, Treatment, etc.). Medical facts in
-these articles typically span 2–4 sentences — for example, a description
-of airway inflammation will state the cause, the physiological effect,
-and the consequence in consecutive sentences.
+Originally planned semantic chunking using cosine similarity between
+sentence embeddings to detect topic shifts. During implementation,
+S-PubMedBert similarity scores between adjacent sentences in Wikipedia
+medical text stayed consistently above 0.90 — because the entire corpus
+covers one domain (asthma), the model finds all sentences semantically
+related and never splits.
 
-Rather than splitting by fixed character count (which can cut mid-idea)
-or purely by paragraph (which can over-split tightly related paragraphs),
-semantic chunking groups sentences by meaning. This keeps complete medical
-ideas — cause, mechanism, consequence — together in one chunk, which
-directly improves retrieval quality for specific clinical questions.
+Switched to paragraph-based chunking, which respects Wikipedia's natural
+structure. Each Wikipedia paragraph covers one idea, and the 1000-character
+ceiling prevents oversized chunks when multiple short paragraphs merge.
+Section header lines (short lines without periods) are stripped before
+chunking to avoid headers bleeding into chunk text.
 
-Too-small chunks (e.g., 100 characters) would split sentences and return
-fragments without enough context to be useful. Too-large chunks (e.g.,
-1500+ characters) would mix multiple topics, reducing retrieval precision.
+Final chunk count: 140 chunks across 10 articles (7–28 per article
+depending on article length).
 
 ---
 
@@ -63,7 +70,9 @@ fragments without enough context to be useful. Too-large chunks (e.g.,
 **Embedding model:** pritamdeka/S-PubMedBert-MS-MARCO
 (via sentence-transformers — runs locally, no API cost)
 
-**Top-k:** 5
+**Vector store:** ChromaDB with cosine distance metric
+
+**Top-k:** 5 (fetches k*2=10 internally, then deduplicates before returning 5)
 
 **Reasoning:**
 Since the corpus is medical in nature, a general-purpose embedding model
@@ -73,10 +82,16 @@ concept. S-PubMedBert is pre-trained on PubMed abstracts and MS-MARCO
 passages, making it significantly better at capturing semantic similarity
 within clinical and biomedical text.
 
-Top-k of 5 gives the LLM enough context to synthesize a complete answer
-across subtopics (e.g., a question about asthma triggers might pull from
-the allergic asthma, occupational asthma, and main asthma articles
-simultaneously) without overwhelming it with off-topic chunks.
+ChromaDB is configured with cosine distance (hnsw:space: cosine) rather
+than the default L2 distance. Cosine distance scores range 0–2, with
+scores below 0.15 indicating strong matches. All evaluation queries
+returned top results with distances between 0.03–0.09, confirming
+strong retrieval quality.
+
+Deduplication was added to retrieve() because several Wikipedia articles
+share identical introductory paragraphs. Without deduplication, the same
+chunk appeared 3 times in top-5 results, wasting retrieval slots. The
+function now fetches 10 results and returns the first 5 unique chunks.
 
 **Production tradeoff reflection:**
 In a real deployment, I would evaluate OpenAI's text-embedding-3-large
@@ -104,7 +119,7 @@ accuracy-to-cost ratio with no API dependency.
 use cross-references ("as described above", "see section X") that lose meaning
 when the text is split into chunks. A retrieved chunk containing such references
 gives the LLM incomplete context, potentially causing hallucinated or vague
-answers. To mitigate this, semantic chunking should keep section-level context
+answers. To mitigate this, paragraph-based chunking keeps section-level context
 together, and the system prompt will instruct the LLM to only answer from what
 is explicitly stated in the retrieved chunks.
 
@@ -128,8 +143,8 @@ exists in the corpus.
      v
 [Retriever]
   - Embed query with S-PubMedBert
-  - Search ChromaDB vector store
-  - Return top-5 chunks + source names
+  - Search ChromaDB vector store (cosine distance)
+  - Fetch top-10, deduplicate, return top-5 chunks + source names
      |
      v
 [Generator]
@@ -153,11 +168,11 @@ I will give Claude this planning.md (specifically the Domain, Documents,
 and Chunking Strategy sections) along with the following request:
 "Implement a Python script that fetches these 10 Wikipedia URLs using
 the wikipedia-api library, cleans the raw text by removing citation
-markers and section headers, applies semantic chunking using
-sentence-transformers with a cosine similarity threshold of 0.75, and
-saves each article's chunks as a separate JSON file in /documents."
+markers and section headers, applies paragraph-based chunking with a
+1000-character ceiling, and saves each article's chunks as a separate
+JSON file in /documents."
 
-I expect it to produce: a working scraper + cleaner + semantic chunker.
+I expect it to produce: a working scraper + cleaner + chunker.
 I will verify by manually inspecting 2-3 output JSON files to confirm
 chunks are complete sentences, medically coherent, and not splitting
 mid-idea.
@@ -166,13 +181,15 @@ mid-idea.
 
 I will give Claude this planning.md (Retrieval Approach section) and ask:
 "Implement embed_and_store() using pritamdeka/S-PubMedBert-MS-MARCO via
-sentence-transformers and ChromaDB as the vector store. Then implement
-retrieve() that takes a query string and returns the top-5 most similar
-chunks with their source document name."
+sentence-transformers and ChromaDB with cosine distance as the vector
+store. Then implement retrieve() that takes a query string, fetches
+top-10 results, deduplicates, and returns the top-5 unique chunks with
+their source document name and distance score."
 
-I expect it to produce: a retriever.py with both functions complete.
-I will verify by running 2 of my evaluation questions manually and
-checking whether the returned chunks are from the correct source articles.
+I expect it to produce: a retrieve.py with both functions complete.
+I will verify by running 3 of my evaluation questions manually and
+checking whether the returned chunks are from the correct source articles
+with distances below 0.15.
 
 **Milestone 5 — Generation, evaluation and interface:**
 
@@ -185,7 +202,7 @@ with Groq as the backend that scores faithfulness, context relevance,
 and answer relevance for each of my 5 test questions."
 
 I expect it to produce: generator.py, a RAGAS evaluation script, and a
-Gradio UI shell. I will verify evaluation scores make sense (faithfulness
+Gradio UI. I will verify evaluation scores make sense (faithfulness
 should be high since source docs are factual Wikipedia articles) and
 manually review any question scoring below 0.7 to identify whether the
 failure is in retrieval or generation.
