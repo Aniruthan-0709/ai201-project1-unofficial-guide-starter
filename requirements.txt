@@ -12,5 +12,5 @@ ragas
 langchain-groq
 
 # Query interface (uncomment when you reach Milestone 5)
-# gradio>=6.9.0
+gradio>=6.9.0
 # streamlit>=1.40.0
