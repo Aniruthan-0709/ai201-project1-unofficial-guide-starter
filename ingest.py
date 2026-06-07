@@ -48,7 +48,7 @@ def clean_text(text):
         if idx != -1:
             text = text[:idx]
 
-    # Remove standalone section header lines (short lines with no period)
+    # Remove standalone section header lines
     lines = text.split('\n')
     lines = [l for l in lines if not (len(l.strip()) < 50 and '.' not in l and l.strip() != '')]
     text = '\n'.join(lines)
@@ -58,14 +58,13 @@ def clean_text(text):
 
 
 def chunk_text(text, title, url, min_chars=200, max_chars=1000):
-    # Split on paragraph boundaries — Wikipedia's natural structure
+    # Split on paragraph boundaries
     paragraphs = [p.strip() for p in text.split('\n\n') if len(p.strip()) > 20]
 
     chunks = []
     current_chunk = ""
 
     for para in paragraphs:
-        # If adding this paragraph exceeds max_chars, save current and start new
         if len(current_chunk) + len(para) > max_chars and len(current_chunk) > min_chars:
             chunks.append({
                 "source": title,
@@ -74,7 +73,6 @@ def chunk_text(text, title, url, min_chars=200, max_chars=1000):
             })
             current_chunk = para
         else:
-            # Add paragraph to current chunk with a space
             current_chunk = current_chunk + " " + para if current_chunk else para
 
     # Don't forget the last chunk
@@ -87,10 +85,25 @@ def chunk_text(text, title, url, min_chars=200, max_chars=1000):
 
     return chunks
 
+
 def scrape_articles():
     all_chunks = []
 
     for title in ARTICLES:
+        filename = title.replace(" ", "_").replace("-", "_") + ".json"
+        filepath = os.path.join(OUTPUT_DIR, filename)
+
+        # Skip fetching if already saved — but use OUR title, not Wikipedia's
+        if os.path.exists(filepath):
+            print(f"Skipping fetch: {title} (already exists)")
+            with open(filepath, encoding="utf-8") as f:
+                data = json.load(f)
+            # Always use our search term as source, not Wikipedia's page title
+            chunks = chunk_text(data["content"], title, data["url"])
+            all_chunks.extend(chunks)
+            print(f"  ✓ {filename} → {len(chunks)} chunks")
+            continue
+
         print(f"Fetching: {title}")
         page = wiki.page(title)
 
@@ -103,23 +116,21 @@ def scrape_articles():
         if len(cleaned) < 5000:
             print(f"  ⚠ Warning: only {len(cleaned)} chars — may be a stub")
 
-        # Save raw cleaned JSON
+        # Use our search term as title — not page.title which can be different
         data = {
-            "title": page.title,
+            "title": title,
             "url": page.fullurl,
             "content": cleaned
         }
-        filename = title.replace(" ", "_").replace("-", "_") + ".json"
-        filepath = os.path.join(OUTPUT_DIR, filename)
+
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-        # Chunk and collect
-        chunks = chunk_text(cleaned, page.title, page.fullurl)
+        chunks = chunk_text(cleaned, title, page.fullurl)
         all_chunks.extend(chunks)
         print(f"  ✓ {filename} → {len(chunks)} chunks")
 
-    # Save all chunks to a single file
+    # Save all chunks
     chunks_path = os.path.join(OUTPUT_DIR, "chunks.json")
     with open(chunks_path, "w", encoding="utf-8") as f:
         json.dump(all_chunks, f, indent=2, ensure_ascii=False)

@@ -1,18 +1,20 @@
-import json
-import random
+import sys
+sys.path.insert(0, '.')
+from retrieve import retrieve, embed_and_store
 
-random.seed(42)  # fixed seed so we see the same chunks as before
+embed_and_store()  # will skip since already embedded
 
-with open('documents/chunks.json', encoding='utf-8') as f:
-    chunks = json.load(f)
+queries = [
+    "What physiological mechanism causes airway narrowing during an asthma attack?",
+    "What is the difference between a rescue inhaler and a controller medication?",
+    "How is a peak flow meter used to monitor asthma severity?"
+]
 
-print(f"Total chunks: {len(chunks)}\n")
-
-samples = random.sample(chunks, 5)
-
-for i, chunk in enumerate(samples, 1):
-    print(f"--- Chunk {i} ---")
-    print(f"Source: {chunk['source']}")
-    print(f"Length: {len(chunk['text'])} chars")
-    print(f"Text: {chunk['text'][:300]}")
-    print()
+for query in queries:
+    print(f"\n{'='*60}")
+    print(f"QUERY: {query}")
+    print('='*60)
+    results = retrieve(query, k=5)
+    for i, r in enumerate(results, 1):
+        print(f"\n  Result {i} — Source: {r['source']} | Distance: {r['distance']:.4f}")
+        print(f"  {r['text'][:200]}")
